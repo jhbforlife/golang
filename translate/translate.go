@@ -35,7 +35,7 @@ func TranslateText(from, to, text string) (string, error) {
 		return "", err
 	}
 
-	options := translate.Options{}
+	options := translate.Options{Format:"text"}
 	if len(strings.Fields(from)) != 0 {
 		fromName, err := matchNameToLang(from, supportedLanguages)
 		if err != nil {
