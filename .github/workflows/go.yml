@@ -1,0 +1,40 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+  
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        workload_identity_provider: 'projects/716768514844/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+        service_account: 'translate-api@jhbforlife-pivotcapstone.iam.gserviceaccount.com'
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v ./...
