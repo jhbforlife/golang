@@ -2,16 +2,25 @@ package translate
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/translate"
 	"golang.org/x/text/language"
 )
 
+type LanguageFile struct {
+	Date      int
+	Languages []translate.Language
+}
+
+var LanguagesPath = "languages.json"
+var ErrInvalidLang = errors.New("invalid or unsupported language: ")
 var supportedLanguages []translate.Language
-var errInvalidLang = errors.New("%s language not supported or is invalid")
 
 func TranslateText(from, to, text string) (string, error) {
 	ctx := context.Background()
@@ -21,7 +30,7 @@ func TranslateText(from, to, text string) (string, error) {
 	}
 	defer client.Close()
 
-	supportedLanguages, err = getSupportedLanguages(&ctx, client)
+	supportedLanguages, err = checkLanguages(&ctx, client)
 	if err != nil {
 		return "", err
 	}
@@ -32,7 +41,7 @@ func TranslateText(from, to, text string) (string, error) {
 		if err != nil {
 			fromTag, err := matchTagToLang(from, supportedLanguages)
 			if err != nil {
-				return "", fmt.Errorf(err.Error(), from)
+				return "", err
 			}
 			options.Source = fromTag
 		} else {
@@ -45,7 +54,7 @@ func TranslateText(from, to, text string) (string, error) {
 	if err != nil {
 		toTag, err := matchTagToLang(to, supportedLanguages)
 		if err != nil {
-			return "", fmt.Errorf(err.Error(), to)
+			return "", err
 		}
 		translateTo = toTag
 	} else {
@@ -60,9 +69,47 @@ func TranslateText(from, to, text string) (string, error) {
 	return translation[0].Text, nil
 }
 
+func checkLanguages(ctx *context.Context, client *translate.Client) ([]translate.Language, error) {
+	var languageFile LanguageFile
+	bs, err := os.ReadFile(LanguagesPath)
+	switch {
+	case os.IsNotExist(err):
+		langs, err := getSupportedLanguages(ctx, client)
+		if err != nil {
+			return nil, err
+		}
+		return langs, nil
+	case err != nil:
+		return nil, err
+	}
+
+	if err := json.Unmarshal(bs, &languageFile); err != nil {
+		if err := os.Remove(LanguagesPath); err == nil {
+			return checkLanguages(ctx, client)
+		}
+		return nil, err
+	}
+	if languageFile.Date != time.Now().Day() {
+		langs, err := getSupportedLanguages(ctx, client)
+		if err != nil {
+			return nil, err
+		}
+		return langs, nil
+	}
+	return languageFile.Languages, nil
+}
+
 func getSupportedLanguages(ctx *context.Context, client *translate.Client) ([]translate.Language, error) {
 	langs, err := client.SupportedLanguages(*ctx, language.English)
 	if err != nil {
+		return nil, err
+	}
+	langsToFile := LanguageFile{time.Now().Day(), langs}
+	bs, err := json.Marshal(langsToFile)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(LanguagesPath, bs, 0444); err != nil {
 		return nil, err
 	}
 	return langs, nil
@@ -74,7 +121,7 @@ func matchTagToLang(l string, langs []translate.Language) (language.Tag, error) 
 			return lang.Tag, nil
 		}
 	}
-	return language.Und, errInvalidLang
+	return language.Und, fmt.Errorf("%w%s", ErrInvalidLang, l)
 }
 
 func matchNameToLang(l string, langs []translate.Language) (language.Tag, error) {
@@ -83,5 +130,5 @@ func matchNameToLang(l string, langs []translate.Language) (language.Tag, error)
 			return lang.Tag, nil
 		}
 	}
-	return language.Und, errInvalidLang
+	return language.Und, fmt.Errorf("%w%s", ErrInvalidLang, l)
 }
