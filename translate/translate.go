@@ -19,9 +19,8 @@ type LanguageFile struct {
 }
 
 var LanguagesPath = "languages.json"
-
+var ErrInvalidLang = errors.New("invalid or unsupported language: ")
 var supportedLanguages []translate.Language
-var errInvalidLang = errors.New("%s language not supported or is invalid")
 
 func TranslateText(from, to, text string) (string, error) {
 	ctx := context.Background()
@@ -42,7 +41,7 @@ func TranslateText(from, to, text string) (string, error) {
 		if err != nil {
 			fromTag, err := matchTagToLang(from, supportedLanguages)
 			if err != nil {
-				return "", fmt.Errorf(err.Error(), from)
+				return "", err
 			}
 			options.Source = fromTag
 		} else {
@@ -55,7 +54,7 @@ func TranslateText(from, to, text string) (string, error) {
 	if err != nil {
 		toTag, err := matchTagToLang(to, supportedLanguages)
 		if err != nil {
-			return "", fmt.Errorf(err.Error(), to)
+			return "", err
 		}
 		translateTo = toTag
 	} else {
@@ -122,7 +121,7 @@ func matchTagToLang(l string, langs []translate.Language) (language.Tag, error) 
 			return lang.Tag, nil
 		}
 	}
-	return language.Und, errInvalidLang
+	return language.Und, fmt.Errorf("%w%s", ErrInvalidLang, l)
 }
 
 func matchNameToLang(l string, langs []translate.Language) (language.Tag, error) {
@@ -131,5 +130,5 @@ func matchNameToLang(l string, langs []translate.Language) (language.Tag, error)
 			return lang.Tag, nil
 		}
 	}
-	return language.Und, errInvalidLang
+	return language.Und, fmt.Errorf("%w%s", ErrInvalidLang, l)
 }
