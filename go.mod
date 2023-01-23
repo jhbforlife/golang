@@ -1,4 +1,4 @@
-module github.com/jhbatshipt/jhbatshipt/golang
+module github.com/jhbatshipt/golang
 
 go 1.19
 
