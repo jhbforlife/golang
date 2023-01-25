@@ -26,6 +26,11 @@ func main() {
 	toFlag := flag.String("to", "", "language to translate to")
 	flag.Parse()
 
+	if *fFlag == "" && *fromFlag == "" && !*hFlag && !*helpFlag && *tFlag == "" && *toFlag == "" {
+		flag.Usage()
+		return
+	}
+
 	if *hFlag || *helpFlag {
 		flag.Usage()
 		return
