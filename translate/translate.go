@@ -20,9 +20,14 @@ type LanguageFile struct {
 
 var LanguagesPath = "languages.json"
 var ErrInvalidLang = errors.New("invalid or unsupported language: ")
+var ErrInvalidRequest = errors.New("invalid to language or text to translate")
 var supportedLanguages []translate.Language
 
 func TranslateText(from, to, text string) (string, error) {
+	if len(strings.Fields(to)) == 0 || len(strings.Fields(text)) == 0 {
+		return "", ErrInvalidRequest
+	}
+
 	ctx := context.Background()
 	client, err := translate.NewClient(ctx)
 	if err != nil {
@@ -35,7 +40,7 @@ func TranslateText(from, to, text string) (string, error) {
 		return "", err
 	}
 
-	options := translate.Options{Format:"text"}
+	options := translate.Options{Format: "text"}
 	if len(strings.Fields(from)) != 0 {
 		fromName, err := matchNameToLang(from, supportedLanguages)
 		if err != nil {
