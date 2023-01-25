@@ -35,7 +35,7 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 
 	text, err := translate.TranslateText(req.From, req.To, req.Text)
 	if err != nil {
-		if errors.Is(err, translate.ErrInvalidLang) {
+		if errors.Is(err, translate.ErrInvalidLang) || errors.Is(err, translate.ErrInvalidRequest) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -65,7 +65,7 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 
 	text, err := translate.TranslateText(req.From, req.To, req.Text)
 	if err != nil {
-		if errors.Is(err, translate.ErrInvalidLang) {
+		if errors.Is(err, translate.ErrInvalidLang) || errors.Is(err, translate.ErrInvalidRequest) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
