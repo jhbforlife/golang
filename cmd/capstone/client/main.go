@@ -40,10 +40,7 @@ func main() {
 		return
 	}
 
-	var text string
-	for _, arg := range flag.Args() {
-		text += arg
-	}
+	text := strings.Join(flag.Args(), " ")
 
 	if len(strings.Fields(text)) == 0 {
 		fmt.Println("translate: no text to translate")
