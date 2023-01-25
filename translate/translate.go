@@ -13,15 +13,15 @@ import (
 	"golang.org/x/text/language"
 )
 
-type LanguageFile struct {
+type languageFile struct {
 	Date      int
 	Languages []translate.Language
 }
 
-var LanguagesPath = "languages.json"
+var supportedLanguages []translate.Language
+var languagesPath = "languages.json"
 var ErrInvalidLang = errors.New("invalid or unsupported language: ")
 var ErrInvalidRequest = errors.New("invalid to language or text to translate")
-var supportedLanguages []translate.Language
 
 func TranslateText(from, to, text string) (string, error) {
 	if len(strings.Fields(to)) == 0 || len(strings.Fields(text)) == 0 {
@@ -75,8 +75,8 @@ func TranslateText(from, to, text string) (string, error) {
 }
 
 func checkLanguages(ctx *context.Context, client *translate.Client) ([]translate.Language, error) {
-	var languageFile LanguageFile
-	bs, err := os.ReadFile(LanguagesPath)
+	var languageFile languageFile
+	bs, err := os.ReadFile(languagesPath)
 	switch {
 	case os.IsNotExist(err):
 		langs, err := getSupportedLanguages(ctx, client)
@@ -89,7 +89,7 @@ func checkLanguages(ctx *context.Context, client *translate.Client) ([]translate
 	}
 
 	if err := json.Unmarshal(bs, &languageFile); err != nil {
-		if err := os.Remove(LanguagesPath); err == nil {
+		if err := os.Remove(languagesPath); err == nil {
 			return checkLanguages(ctx, client)
 		}
 		return nil, err
@@ -109,12 +109,12 @@ func getSupportedLanguages(ctx *context.Context, client *translate.Client) ([]tr
 	if err != nil {
 		return nil, err
 	}
-	langsToFile := LanguageFile{time.Now().Day(), langs}
+	langsToFile := languageFile{time.Now().Day(), langs}
 	bs, err := json.Marshal(langsToFile)
 	if err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(LanguagesPath, bs, 0444); err != nil {
+	if err := os.WriteFile(languagesPath, bs, 0444); err != nil {
 		return nil, err
 	}
 	return langs, nil
