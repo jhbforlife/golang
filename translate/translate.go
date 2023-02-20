@@ -13,67 +13,96 @@ import (
 	"golang.org/x/text/language"
 )
 
+// Data file for supported languages
+// TODO: Change to database
 type languageFile struct {
 	Date      int
 	Languages []translate.Language
 }
 
+// Slice of supported languages
 var supportedLanguages []translate.Language
-var languagesPath = "languages.json"
-var ErrInvalidLang = errors.New("invalid or unsupported language: ")
-var ErrInvalidRequest = errors.New("invalid to language or text to translate")
 
-func TranslateText(from, to, text string) (string, error) {
-	if len(strings.Fields(to)) == 0 || len(strings.Fields(text)) == 0 {
-		return "", ErrInvalidRequest
+// TODO: Change to database
+// Path to the stored languages file
+var languagesPath = "languages.json"
+
+// Error returned if a language is either invalid or not supported.
+var ErrInvalidLang = errors.New("invalid or unsupported language: ")
+
+// Error returned if no translation language is provided.
+var ErrNoToLang = errors.New("no translation language provided")
+
+// Error returned if no translation text is provided.
+var ErrNoText = errors.New("no translation text provided")
+
+// Returns a slice of supported language names.
+func SupportedLanguages() ([]string, error) {
+	// TODO: Implement
+	return nil, nil
+}
+
+// Translate text to another language. Returns an error if either
+// to or text are empty, or if either language is invalid or unsupported.
+// If from is not provided, the source language will be assumed.
+// Returns a slice of possible translations, ranked from hightest to lowest confidence.
+func TranslateText(from, to, text string) ([]string, error) {
+
+	// Check if to or text are empty before sending a translation request
+	if isEmptyString(to) {
+		return nil, ErrNoToLang
+	}
+	if isEmptyString(text) {
+		return nil, ErrNoText
 	}
 
+	// Initialization
 	ctx := context.Background()
 	client, err := translate.NewClient(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer client.Close()
 
+	// TODO: Change to database
+	// Retrieve supported languages
 	supportedLanguages, err = checkLanguages(&ctx, client)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
+	// Match from language and set source option if provided
 	options := translate.Options{Format: "text"}
-	if len(strings.Fields(from)) != 0 {
-		fromName, err := matchNameToLang(from, supportedLanguages)
+	if !isEmptyString(from) {
+		fromLang, err := matchLang(from, supportedLanguages)
 		if err != nil {
-			fromTag, err := matchTagToLang(from, supportedLanguages)
-			if err != nil {
-				return "", err
-			}
-			options.Source = fromTag
-		} else {
-			options.Source = fromName
+			return nil, err
 		}
+		options.Source = fromLang
 	}
 
-	var translateTo language.Tag
-	toName, err := matchNameToLang(to, supportedLanguages)
+	// Match to language to provided string
+	toLang, err := matchLang(to, supportedLanguages)
 	if err != nil {
-		toTag, err := matchTagToLang(to, supportedLanguages)
-		if err != nil {
-			return "", err
-		}
-		translateTo = toTag
-	} else {
-		translateTo = toName
+		return nil, err
 	}
 
-	translation, err := client.Translate(ctx, []string{text}, translateTo, &options)
+	// Request translations
+	translations, err := client.Translate(ctx, []string{text}, toLang, &options)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return translation[0].Text, nil
+	// Create slice of translation strings to return to client
+	stringTranslations := []string{}
+	for _, translation := range translations {
+		stringTranslations = append(stringTranslations, translation.Text)
+	}
+
+	return stringTranslations, nil
 }
 
+// TODO: Change to database
 func checkLanguages(ctx *context.Context, client *translate.Client) ([]translate.Language, error) {
 	var languageFile languageFile
 	bs, err := os.ReadFile(languagesPath)
@@ -104,6 +133,7 @@ func checkLanguages(ctx *context.Context, client *translate.Client) ([]translate
 	return languageFile.Languages, nil
 }
 
+// TODO: Change to database
 func getSupportedLanguages(ctx *context.Context, client *translate.Client) ([]translate.Language, error) {
 	langs, err := client.SupportedLanguages(*ctx, language.English)
 	if err != nil {
@@ -120,18 +150,15 @@ func getSupportedLanguages(ctx *context.Context, client *translate.Client) ([]tr
 	return langs, nil
 }
 
-func matchTagToLang(l string, langs []translate.Language) (language.Tag, error) {
-	for _, lang := range langs {
-		if strings.EqualFold(lang.Tag.String(), l) {
-			return lang.Tag, nil
-		}
-	}
-	return language.Und, fmt.Errorf("%w%s", ErrInvalidLang, l)
+// Check if a provided string is empty
+func isEmptyString(s string) bool {
+	return len(strings.Fields(s)) == 0
 }
 
-func matchNameToLang(l string, langs []translate.Language) (language.Tag, error) {
+// Match a supported language string to a returned language tag
+func matchLang(l string, langs []translate.Language) (language.Tag, error) {
 	for _, lang := range langs {
-		if strings.EqualFold(lang.Name, l) {
+		if strings.EqualFold(lang.Name, l) || strings.EqualFold(lang.Tag.String(), l) {
 			return lang.Tag, nil
 		}
 	}
