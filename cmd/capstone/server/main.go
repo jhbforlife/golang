@@ -33,9 +33,10 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	text, err := translate.TranslateText(req.From, req.To, req.Text)
+	translations, err := translate.TranslateText(req.From, req.To, req.Text)
+	text := translations[0]
 	if err != nil {
-		if errors.Is(err, translate.ErrInvalidLang) || errors.Is(err, translate.ErrInvalidRequest) {
+		if errors.Is(err, translate.ErrInvalidLang) || errors.Is(err, translate.ErrNoText) || errors.Is(err, translate.ErrNoToLang) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -63,9 +64,10 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 	req.To = vars.Get("to")
 	req.Text = vars.Get("text")
 
-	text, err := translate.TranslateText(req.From, req.To, req.Text)
+	translations, err := translate.TranslateText(req.From, req.To, req.Text)
+	text := translations[0]
 	if err != nil {
-		if errors.Is(err, translate.ErrInvalidLang) || errors.Is(err, translate.ErrInvalidRequest) {
+		if errors.Is(err, translate.ErrInvalidLang) || errors.Is(err, translate.ErrNoText) || errors.Is(err, translate.ErrNoToLang) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
