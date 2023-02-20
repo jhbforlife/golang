@@ -2,30 +2,23 @@ package translate
 
 import (
 	"context"
-	"encoding/json"
+	"database/sql"
 	"errors"
 	"fmt"
+	"io/fs"
+	"log"
 	"os"
 	"strings"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 
 	"cloud.google.com/go/translate"
 	"golang.org/x/text/language"
 )
 
-// Data file for supported languages
-// TODO: Change to database
-type languageFile struct {
-	Date      int
-	Languages []translate.Language
-}
-
-// Slice of supported languages
-var supportedLanguages []translate.Language
-
-// TODO: Change to database
-// Path to the stored languages file
-var languagesPath = "languages.json"
+// Path to supported languages database
+var dbPath = "./languages.db"
 
 // Error returned if a language is either invalid or not supported.
 var ErrInvalidLang = errors.New("invalid or unsupported language: ")
@@ -38,14 +31,13 @@ var ErrNoText = errors.New("no translation text provided")
 
 // Returns a slice of supported language names.
 func SupportedLanguages() ([]string, error) {
-	// TODO: Implement
-	return nil, nil
+	return getSupportedLanguages()
 }
 
 // Translate text to another language. Returns an error if either
 // to or text are empty, or if either language is invalid or unsupported.
-// If from is not provided, the source language will be assumed.
-// Returns a slice of possible translations, ranked from hightest to lowest confidence.
+// If from is not provided, the source language will be assumed. Returns a slice of
+// possible translations, ranked from hightest to lowest confidence.
 func TranslateText(from, to, text string) ([]string, error) {
 
 	// Check if to or text are empty before sending a translation request
@@ -56,7 +48,7 @@ func TranslateText(from, to, text string) ([]string, error) {
 		return nil, ErrNoText
 	}
 
-	// Initialization
+	// Initialize Cloud Translation client
 	ctx := context.Background()
 	client, err := translate.NewClient(ctx)
 	if err != nil {
@@ -64,17 +56,22 @@ func TranslateText(from, to, text string) ([]string, error) {
 	}
 	defer client.Close()
 
-	// TODO: Change to database
-	// Retrieve supported languages
-	supportedLanguages, err = checkLanguages(&ctx, client)
+	// Verify database exists and is up to date
+	if verifyDB(); err != nil {
+		return nil, err
+	}
+
+	// Initialize connection to database
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	// Match from language and set source option if provided
 	options := translate.Options{Format: "text"}
 	if !isEmptyString(from) {
-		fromLang, err := matchLang(from, supportedLanguages)
+		fromLang, err := matchLang(from, db)
 		if err != nil {
 			return nil, err
 		}
@@ -82,7 +79,7 @@ func TranslateText(from, to, text string) ([]string, error) {
 	}
 
 	// Match to language to provided string
-	toLang, err := matchLang(to, supportedLanguages)
+	toLang, err := matchLang(to, db)
 	if err != nil {
 		return nil, err
 	}
@@ -98,56 +95,106 @@ func TranslateText(from, to, text string) ([]string, error) {
 	for _, translation := range translations {
 		stringTranslations = append(stringTranslations, translation.Text)
 	}
-
 	return stringTranslations, nil
 }
 
-// TODO: Change to database
-func checkLanguages(ctx *context.Context, client *translate.Client) ([]translate.Language, error) {
-	var languageFile languageFile
-	bs, err := os.ReadFile(languagesPath)
-	switch {
-	case os.IsNotExist(err):
-		langs, err := getSupportedLanguages(ctx, client)
-		if err != nil {
-			return nil, err
-		}
-		return langs, nil
-	case err != nil:
-		return nil, err
+// Create the supported language database
+func createLanguagesDB() error {
+	// Remvoe existing database
+	os.Remove(dbPath)
+
+	// Initialize connection to database
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Create languages table if it does not exist
+	createStmt := `create table if not exists languages (tag text not null, name text not null, date int not null);`
+	if _, err := db.Exec(createStmt); err != nil {
+		return fmt.Errorf("%q: %s", err, createStmt)
 	}
 
-	if err := json.Unmarshal(bs, &languageFile); err != nil {
-		if err := os.Remove(languagesPath); err == nil {
-			return checkLanguages(ctx, client)
-		}
-		return nil, err
+	// Start database transaction
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
 	}
-	if languageFile.Date != time.Now().Day() {
-		langs, err := getSupportedLanguages(ctx, client)
+	stmt, err := tx.Prepare("insert into languages(tag, name, date) values(?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Initialize Cloud Translation client
+	ctx := context.Background()
+	client, err := translate.NewClient(ctx)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	// Request supported languages from Cloud Translation API
+	langs, err := client.SupportedLanguages(ctx, language.English)
+	if err != nil {
+		return err
+	}
+
+	// Insert each language into the database
+	for _, lang := range langs {
+		_, err = stmt.Exec(lang.Tag.String(), lang.Name, time.Now().Unix())
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return langs, nil
 	}
-	return languageFile.Languages, nil
+
+	// Commit changes
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// TODO: Change to database
-func getSupportedLanguages(ctx *context.Context, client *translate.Client) ([]translate.Language, error) {
-	langs, err := client.SupportedLanguages(*ctx, language.English)
+// Get supported languages from the database and return
+// them as a slice of strings
+func getSupportedLanguages() ([]string, error) {
+	// Initialize connection to database
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, err
 	}
-	langsToFile := languageFile{time.Now().Day(), langs}
-	bs, err := json.Marshal(langsToFile)
+	defer db.Close()
+
+	// Verify database exists and is up to date
+	if err := verifyDB(); err != nil {
+		return nil, err
+	}
+
+	// Select the names column from the table
+	rows, err := db.Query("select name from languages")
 	if err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(languagesPath, bs, 0444); err != nil {
+	defer rows.Close()
+
+	// Append each language to a slice and return it
+	languages := []string{}
+	for rows.Next() {
+		var name string
+		err = rows.Scan(&name)
+		if err != nil {
+			return nil, err
+		}
+		languages = append(languages, name)
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return langs, nil
+
+	return languages, nil
 }
 
 // Check if a provided string is empty
@@ -156,11 +203,76 @@ func isEmptyString(s string) bool {
 }
 
 // Match a supported language string to a returned language tag
-func matchLang(l string, langs []translate.Language) (language.Tag, error) {
-	for _, lang := range langs {
-		if strings.EqualFold(lang.Name, l) || strings.EqualFold(lang.Tag.String(), l) {
-			return lang.Tag, nil
+func matchLang(l string, db *sql.DB) (language.Tag, error) {
+	// Formatted error with provided language
+	invalidLang := fmt.Errorf("%w%s", ErrInvalidLang, l)
+
+	// Query statement to check against the tag and name in the table
+	rows, err := db.Query(fmt.Sprintf("select tag from languages where tag=\"%s\" or name=\"%s\" collate nocase", l, l))
+	if err != nil {
+		return language.Und, invalidLang
+	}
+	defer rows.Close()
+
+	// Select the matching string tag from the table,
+	// parse into a language tag and return it.
+	var tag language.Tag
+	for rows.Next() {
+		var stringTag string
+		err = rows.Scan(&stringTag)
+		if err != nil {
+			return language.Und, invalidLang
+		}
+		tag, err = language.Parse(stringTag)
+		if err != nil {
+			return language.Und, invalidLang
 		}
 	}
-	return language.Und, fmt.Errorf("%w%s", ErrInvalidLang, l)
+
+	if err := rows.Err(); err != nil {
+		return language.Und, invalidLang
+	}
+
+	return tag, nil
+}
+
+// Check if the supported language database exists and create it
+// if not. Also checks if the database is up to date, and if not,
+// creates a new database.
+func verifyDB() error {
+	// Check if the database exists
+	if _, err := os.Stat(dbPath); errors.Is(err, fs.ErrNotExist) {
+		return createLanguagesDB()
+	}
+
+	// Initialize connection to database
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Check if the database is outdated
+	rows, err := db.Query("select date from languages limit 1")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var date int64
+		err = rows.Scan(&date)
+		if err != nil {
+			return err
+		}
+
+		if date+(24*3600) < time.Now().Unix() {
+			return createLanguagesDB()
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	return nil
 }
