@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const serviceURL = "https://translate-jmmhwrz5fq-uc.a.run.app/json"
+const serviceURL = "https://jhbforlife-go-translate-prwe4vh5jq-uc.a.run.app/json"
 
 func main() {
 	flag.Usage = func() {
