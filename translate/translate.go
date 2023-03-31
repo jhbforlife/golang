@@ -29,10 +29,10 @@ var (
 
 // Translation contains all pertinent information for a translation
 type Translation struct {
-	from       string
-	to         string
-	original   string
-	translated string
+	From       string
+	To         string
+	Original   string
+	Translated string
 }
 
 // Translate original text to another language
@@ -50,7 +50,7 @@ func TranslateText(from, to, original string) (Translation, error) {
 	if isEmptyString(original) {
 		return translation, ErrNoText
 	}
-	translation.original = original
+	translation.Original = original
 
 	// Initialize Cloud Translation client
 	ctx := context.Background()
@@ -69,7 +69,7 @@ func TranslateText(from, to, original string) (Translation, error) {
 			return translation, errors.Join(ErrParseFrom, err)
 		}
 		options.Source = fromLang
-		translation.from = from
+		translation.From = from
 	}
 
 	// Match provided to language string to language tag
@@ -77,7 +77,7 @@ func TranslateText(from, to, original string) (Translation, error) {
 	if err != nil {
 		return translation, errors.Join(ErrParseTo, err)
 	}
-	translation.to = to
+	translation.To = to
 
 	// Request translations
 	translations, err := client.Translate(ctx, []string{original}, toLang, &options)
@@ -86,10 +86,10 @@ func TranslateText(from, to, original string) (Translation, error) {
 	}
 
 	// If from not provided, assign detected language source
-	if isEmptyString(translation.from) {
-		translation.from = translations[0].Source.String()
+	if isEmptyString(translation.From) {
+		translation.From = translations[0].Source.String()
 	}
-	translation.translated = translations[0].Text
+	translation.Translated = translations[0].Text
 	return translation, nil
 }
 

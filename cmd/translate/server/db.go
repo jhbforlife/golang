@@ -65,7 +65,7 @@ func createDB() error {
 		return err
 	}
 
-	return insertLanguagesIntoTable(*db, langs)
+	return insertLanguagesIntoTable(db, langs)
 }
 
 // Get supported languages from the database and return
@@ -164,7 +164,7 @@ func insertTranslationIntoTable(t *translate.Translation) error {
 	defer stmt.Close()
 
 	// Insert translation into the table
-	_, err = stmt.Exec(t.from, t.to, t.original, t.translated)
+	_, err = stmt.Exec(t.From, t.To, t.Original, t.Translated)
 	if err != nil {
 		return errors.Join(ErrExecuteStmt, err)
 	}
@@ -266,7 +266,7 @@ func updateLanguagesTable() {
 		log.Println(errors.Join(ErrDeleteTable, err))
 	}
 
-	if err := insertLanguagesIntoTable(*db, langs); err != nil {
+	if err := insertLanguagesIntoTable(db, langs); err != nil {
 		log.Println(err)
 	}
 }
