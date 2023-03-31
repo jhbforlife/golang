@@ -100,7 +100,7 @@ func GetSupportedLanguages() (map[string]string, error) {
 	ctx := context.Background()
 	client, err := translate.NewClient(ctx)
 	if err != nil {
-		return nil, ErrInitClient
+		return nil, errors.Join(ErrInitClient, err)
 	}
 	defer client.Close()
 
