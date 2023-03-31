@@ -1,11 +1,11 @@
-FROM golang:alpine AS builder
+FROM golang:latest AS builder
 
 MAINTAINER Jacob Brown @jhbforlife
 
-RUN apk update && apk upgrade && apk add git
+RUN apt update && apt upgrade -y
 RUN git clone https://github.com/jhbforlife/golang && cd golang/cmd/translate/server && env GOOS=linux GOARCH=amd64 go build
 
-FROM alpine:latest
+FROM ubuntu:latest
 
 EXPOSE 8080
 
