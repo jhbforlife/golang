@@ -144,7 +144,7 @@ func insertLanguagesIntoTable(db *sql.DB, langs map[string]string) error {
 }
 
 // Insert a translation into the translations table
-func insertTranslationIntoTable(t *translate.Translation) error {
+func insertTranslationIntoTable(t translate.Translation) error {
 	// Initialize connection to database
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -217,6 +217,46 @@ func matchLang(l string) (string, error) {
 	}
 
 	return stringTag, nil
+}
+
+// Match current translation request against translations table before
+// requesting new translation from package
+func matchTranslation(t translateRequest) (translate.Translation, error) {
+	// Translation to return
+	var translation translate.Translation
+
+	// Verify database exists
+	if err := verifyDB(); err != nil {
+		log.Println(err)
+	}
+
+	// Initialize connection to database
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return translation, errors.Join(ErrOpenDB, err)
+	}
+	defer db.Close()
+
+	// Select the appropriate translated string to return
+	rows, err := db.Query(fmt.Sprintf("select translated from translations where from=\"%s\" and to=\"%s\" and original=\"%s\" collate nocase limit 1", t.From, t.To, t.Original))
+	if err != nil {
+		return translation, errors.Join(ErrQueryTable, err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var translated string
+		err = rows.Scan(&translated)
+		if err != nil {
+			return translation, errors.Join(ErrScanRows, err)
+		}
+		translation.Translated = translated
+	}
+	if err := rows.Err(); err != nil {
+		return translation, errors.Join(ErrScanRows, err)
+	}
+
+	return translation, nil
 }
 
 // Delete all rows in the translations table using CRON
