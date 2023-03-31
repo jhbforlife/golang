@@ -11,6 +11,6 @@ EXPOSE 8080
 
 WORKDIR /server
 
-COPY --from=builder /golang/cmd/translate/server/server .
+COPY --from=builder /go/golang/cmd/translate/server/server .
 
 CMD ["./server"]
