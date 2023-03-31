@@ -15,15 +15,15 @@ var (
 	ErrNoTo = errors.New("no translation language provided")
 	// no translation text provided
 	ErrNoText = errors.New("no translation text provided")
-	// error initializing GCP Translation client:
+	// error initializing GCP Translation client
 	ErrInitClient = errors.New("error initializing GCP Translation client: ")
-	// error parsing from language tag:
+	// error parsing from language tag
 	ErrParseFrom = errors.New("error parsing from language tag: ")
-	// error parsing to language tag:
+	// error parsing to language tag
 	ErrParseTo = errors.New("error parsing to language tag: ")
-	// error translating with GCP Translation API:
+	// error translating with GCP Translation API
 	ErrTranslate = errors.New("error translating with GCP Translation API: ")
-	// error getting supported languages from GCP Translation API:
+	// error getting supported languages from GCP Translation API
 	ErrGetLangs = errors.New("error getting supported languages from GCP Translation API: ")
 )
 
