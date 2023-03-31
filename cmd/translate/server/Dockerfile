@@ -3,7 +3,7 @@ FROM golang:latest AS builder
 MAINTAINER Jacob Brown @jhbforlife
 
 RUN apt update && apt upgrade -y
-RUN git clone https://github.com/jhbforlife/golang && cd golang/cmd/translate/server && env GOOS=linux GOARCH=amd64 go build
+RUN git clone https://github.com/jhbforlife/golang && cd golang/cmd/translate/server && env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build
 
 FROM alpine:latest
 
