@@ -13,6 +13,6 @@ WORKDIR /server
 
 COPY --from=builder /go/golang/cmd/translate/server/server .
 
-RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+RUN apt update && apt upgrade && apt install ca-certificates -y
 
 CMD ["./server"]
