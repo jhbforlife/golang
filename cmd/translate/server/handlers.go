@@ -12,7 +12,7 @@ import (
 
 // Incoming JSON request format
 type translateRequest struct {
-	From, To, Original string
+	Source, ToLang, Original string
 }
 
 // Handle incoming JSON POST requests
@@ -35,7 +35,7 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	translateAndWrite(w, req)
+	translateAndWrite(w, &req)
 }
 
 // Handle incoming GET requests for supported languages
@@ -73,32 +73,34 @@ func queryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req translateRequest
-	if vars.Has("from") {
-		req.From = vars.Get("from")
+	if vars.Has("source") {
+		req.Source = vars.Get("source")
 	}
-	req.To = vars.Get("to")
+	req.ToLang = vars.Get("to")
 	req.Original = vars.Get("original")
 
-	translateAndWrite(w, req)
+	translateAndWrite(w, &req)
 }
 
 // Requests translation using translate package and writes response to client
-func translateAndWrite(w http.ResponseWriter, req translateRequest) {
-	from, err := matchLang(req.From)
+func translateAndWrite(w http.ResponseWriter, req *translateRequest) {
+	source, err := matchLang(req.Source)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	req.From = from
+	req.Source = source
 
-	to, err := matchLang(req.To)
+	to, err := matchLang(req.ToLang)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	req.To = to
+	req.ToLang = to
 
-	translation, err := matchTranslation(req)
+	translation, err := matchTranslation(*req)
 	if err != nil {
-		newTranslation, err := translate.TranslateText(req.From, req.To, req.Original)
+		newTranslation, err := translate.TranslateText(req.Source, req.ToLang, req.Original)
 		if err != nil {
 			if errors.Is(err, translate.ErrNoTo) || errors.Is(err, translate.ErrNoText) {
 				http.Error(w, err.Error(), http.StatusBadRequest)

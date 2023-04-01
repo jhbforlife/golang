@@ -29,8 +29,8 @@ var (
 
 // Translation contains all pertinent information for a translation
 type Translation struct {
-	From       string
-	To         string
+	Source     string
+	ToLang     string
 	Original   string
 	Translated string
 }
@@ -38,13 +38,13 @@ type Translation struct {
 // Translate original text to another language
 // If from is not provided, the source language will be assumed
 // Returns a Translation struct and an error
-func TranslateText(from, to, original string) (Translation, error) {
+func TranslateText(source, toLang, original string) (Translation, error) {
 
 	// Translation to return
 	var translation Translation
 
 	// Check if to or text are empty before sending a translation request
-	if isEmptyString(to) {
+	if isEmptyString(toLang) {
 		return translation, ErrNoTo
 	}
 	if isEmptyString(original) {
@@ -63,31 +63,31 @@ func TranslateText(from, to, original string) (Translation, error) {
 	// If provided, match from language string to language tag
 	// and setting source option
 	options := translate.Options{Format: "text"}
-	if !isEmptyString(from) {
-		fromLang, err := language.Parse(from)
+	if !isEmptyString(source) {
+		fromLang, err := language.Parse(source)
 		if err != nil {
 			return translation, errors.Join(ErrParseFrom, err)
 		}
 		options.Source = fromLang
-		translation.From = from
+		translation.Source = source
 	}
 
 	// Match provided to language string to language tag
-	toLang, err := language.Parse(to)
+	parsedToLang, err := language.Parse(toLang)
 	if err != nil {
 		return translation, errors.Join(ErrParseTo, err)
 	}
-	translation.To = to
+	translation.ToLang = toLang
 
 	// Request translations
-	translations, err := client.Translate(ctx, []string{original}, toLang, &options)
+	translations, err := client.Translate(ctx, []string{original}, parsedToLang, &options)
 	if err != nil {
 		return translation, errors.Join(ErrTranslate, err)
 	}
 
 	// If from not provided, assign detected language source
-	if isEmptyString(translation.From) {
-		translation.From = translations[0].Source.String()
+	if isEmptyString(translation.Source) {
+		translation.Source = translations[0].Source.String()
 	}
 	translation.Translated = translations[0].Text
 	return translation, nil
