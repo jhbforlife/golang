@@ -30,7 +30,7 @@ var (
 // Translation contains all pertinent information for a translation
 type Translation struct {
 	Source     string
-	ToLang     string
+	To         string
 	Original   string
 	Translated string
 }
@@ -38,13 +38,13 @@ type Translation struct {
 // Translate original text to another language
 // If from is not provided, the source language will be assumed
 // Returns a Translation struct and an error
-func TranslateText(source, toLang, original string) (Translation, error) {
+func TranslateText(source, to, original string) (Translation, error) {
 
 	// Translation to return
 	var translation Translation
 
 	// Check if to or text are empty before sending a translation request
-	if isEmptyString(toLang) {
+	if isEmptyString(to) {
 		return translation, ErrNoTo
 	}
 	if isEmptyString(original) {
@@ -73,14 +73,14 @@ func TranslateText(source, toLang, original string) (Translation, error) {
 	}
 
 	// Match provided to language string to language tag
-	parsedToLang, err := language.Parse(toLang)
+	parsedTo, err := language.Parse(to)
 	if err != nil {
 		return translation, errors.Join(ErrParseTo, err)
 	}
-	translation.ToLang = toLang
+	translation.To = to
 
 	// Request translations
-	translations, err := client.Translate(ctx, []string{original}, parsedToLang, &options)
+	translations, err := client.Translate(ctx, []string{original}, parsedTo, &options)
 	if err != nil {
 		return translation, errors.Join(ErrTranslate, err)
 	}

@@ -57,7 +57,7 @@ func createDB() error {
 	}
 
 	// Create translations table if it does not exist
-	translationStmt := `create table if not exists translations (source text not null, toLang text not null, original text not null, translated text not null);`
+	translationStmt := `create table if not exists translations (source text not null, "to" text not null, original text not null, translated text not null);`
 	if _, err := db.Exec(translationStmt); err != nil {
 		return errors.Join(ErrCreateTable, err)
 	}
@@ -102,7 +102,7 @@ func getSupportedLanguages() (map[string]string, error) {
 		if err != nil {
 			return nil, errors.Join(ErrScanRows, err)
 		}
-		languages["name"] = tag
+		languages[name] = tag
 	}
 	if err := rows.Err(); err != nil {
 		return nil, errors.Join(ErrScanRows, err)
@@ -160,14 +160,14 @@ func insertTranslationIntoTable(t translate.Translation) error {
 	if err != nil {
 		return errors.Join(ErrStartTx, err)
 	}
-	stmt, err := tx.Prepare("insert into translations(source, toLang, original, translated) values(?, ?, ?, ?)")
+	stmt, err := tx.Prepare("insert into translations(source, \"to\", original, translated) values(?, ?, ?, ?)")
 	if err != nil {
 		return errors.Join(ErrPrepareTx, err)
 	}
 	defer stmt.Close()
 
 	// Insert translation into the table
-	_, err = stmt.Exec(t.Source, t.ToLang, t.Original, t.Translated)
+	_, err = stmt.Exec(t.Source, t.To, t.Original, t.Translated)
 	if err != nil {
 		return errors.Join(ErrExecuteStmt, err)
 	}
@@ -227,7 +227,7 @@ func matchLang(l string) (string, error) {
 func matchTranslation(t translateRequest) (translate.Translation, error) {
 	// Translation to return
 	var translation translate.Translation
-	translation.ToLang = t.ToLang
+	translation.To = t.To
 	translation.Original = t.Original
 
 	// Verify database exists
@@ -243,7 +243,7 @@ func matchTranslation(t translateRequest) (translate.Translation, error) {
 	defer db.Close()
 
 	// Select the appropriate translated string to return
-	rows, err := db.Query(fmt.Sprintf("select source, translated from translations where toLang=\"%s\" and original=\"%s\" collate nocase limit 1", t.ToLang, t.Original))
+	rows, err := db.Query(fmt.Sprintf("select source, translated from translations where \"to\"=\"%s\" and original=\"%s\" collate nocase limit 1", t.To, t.Original))
 	if err != nil {
 		return translation, errors.Join(ErrQueryTable, err)
 	}
@@ -263,7 +263,7 @@ func matchTranslation(t translateRequest) (translate.Translation, error) {
 		return translation, errors.Join(ErrScanRows, err)
 	}
 
-	if len(strings.Fields(translation.ToLang)) == 0 || len(strings.Fields(translation.Original)) == 0 || len(strings.Fields(translation.Translated)) == 0 {
+	if len(strings.Fields(translation.To)) == 0 || len(strings.Fields(translation.Original)) == 0 || len(strings.Fields(translation.Translated)) == 0 {
 		return translation, ErrFindTranslations
 	}
 

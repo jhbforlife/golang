@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	log.Println(createDB())
+	log.Println("creating database:", createDB())
 	startCron()
 	http.HandleFunc("/json", http.HandlerFunc(jsonHandler))
 	http.HandleFunc("/languages", http.HandlerFunc(languagesHandler))
