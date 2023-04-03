@@ -15,8 +15,14 @@ type translateRequest struct {
 	Source, To, Original string
 }
 
+// Enable CORS
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
+
 // Handle incoming JSON POST requests
 func jsonHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	if r.Method != "POST" {
 		http.Error(w, http.ErrNotSupported.ErrorString, http.StatusMethodNotAllowed)
 		return
@@ -40,6 +46,7 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle incoming GET requests for supported languages
 func languagesHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	if r.Method != "GET" {
 		http.Error(w, http.ErrNotSupported.ErrorString, http.StatusMethodNotAllowed)
 		return
@@ -62,6 +69,7 @@ func languagesHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle incoming GET requests with query parameters
 func queryHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	if r.Method != "GET" {
 		http.Error(w, http.ErrNotSupported.ErrorString, http.StatusMethodNotAllowed)
 		return
