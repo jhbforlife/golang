@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const serviceURL = "https://jhbforlife-go-translate-prwe4vh5jq-uc.a.run.app/json"
+const serviceURL = "" // no server currently live
 
 func main() {
 	flag.Usage = func() {
