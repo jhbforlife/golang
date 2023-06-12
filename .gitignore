@@ -19,4 +19,7 @@
 
 # Go workspace file
 go.work
+
+# Other
 *.DS_Store
+*.history
