@@ -15,18 +15,18 @@ const serviceURL = "" // no server currently live
 func main() {
 	flag.Usage = func() {
 		w := flag.CommandLine.Output()
-		fmt.Fprint(w, "\nusage: translate [options] text\n\n-f, -from\n\tlanguage to translate from\n-h, -help\n\tprint this message\n-t, -to *required\n\tlanguage to translate to\n\n")
+		fmt.Fprint(w, "\nusage: translate [options] original\n\n-s, -source\n\tsource language\n-h, -help\n\tprint this message\n-t, -to *required\n\tlanguage to translate to\n\n")
 	}
 
-	fFlag := flag.String("f", "", "language to translate from")
-	fromFlag := flag.String("from", "", "language to translate from")
+	sFlag := flag.String("s", "", "source language")
+	sourceFlag := flag.String("source", "", "source language")
 	hFlag := flag.Bool("h", false, "display help message")
 	helpFlag := flag.Bool("help", false, "display help message")
 	tFlag := flag.String("t", "", "language to translate to")
 	toFlag := flag.String("to", "", "language to translate to")
 	flag.Parse()
 
-	if *fFlag == "" && *fromFlag == "" && !*hFlag && !*helpFlag && *tFlag == "" && *toFlag == "" {
+	if *sFlag == "" && *sourceFlag == "" && !*hFlag && !*helpFlag && *tFlag == "" && *toFlag == "" {
 		flag.Usage()
 		return
 	}
@@ -36,7 +36,7 @@ func main() {
 		return
 	}
 
-	from := getStringFromFlags(*fFlag, *fromFlag)
+	from := getStringFromFlags(*sFlag, *sourceFlag)
 	to := getStringFromFlags(*tFlag, *toFlag)
 
 	if to == "" {
